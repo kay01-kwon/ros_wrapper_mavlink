@@ -4,10 +4,6 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
-
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
@@ -33,6 +29,8 @@ class RosWrapperMavlink
 
     RosWrapperMavlink(const ros::NodeHandle &nh, GenericPort *port, int ros_rate);
 
+    void ros_run();
+
     ~RosWrapperMavlink();
 
     private:
@@ -57,21 +55,12 @@ class RosWrapperMavlink
     bool highres_imu_received_{false};
     bool attitude_quaternion_received_{false};
 
-    boost::thread read_thread_;
-    boost::thread rosrun_thread_;
-
-    boost::mutex mtx_;
-    boost::condition_variable cv_;
-
-    void publisher_and_thread_setup();
+    void publisher_setup();
 
     int arm_disarm(bool flag);
 
     void start();
 
-    void read_thread_func();
-
-    void rosrun_thread_func();
     
 };
 

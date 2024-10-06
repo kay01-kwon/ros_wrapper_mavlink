@@ -14,5 +14,7 @@ int main(int argc, char** argv)
 
     RosWrapperMavlink wrapper(nh, &port);
 
+    wrapper.ros_run();
+
     return 0;
 }

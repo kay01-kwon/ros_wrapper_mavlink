@@ -9,7 +9,7 @@ GenericPort *port)
 
     arm_disarm(true);
 
-    publisher_and_thread_setup();
+    publisher_setup();
 
     start();
 }
@@ -24,74 +24,20 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh, GenericPort *por
 
     arm_disarm(true);
 
-    publisher_and_thread_setup();
+    publisher_setup();
 
     start();
 
 }
 
-RosWrapperMavlink::~RosWrapperMavlink()
+void RosWrapperMavlink::ros_run()
 {
-    read_thread_.join();
-    rosrun_thread_.join();
-}
-
-void RosWrapperMavlink::publisher_and_thread_setup()
-{
-    port_->start();
-    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("/imu",1);
-    mag_pub_ = nh_.advertise<sensor_msgs::MagneticField>("/mag",1);
-
-    read_thread_ = boost::thread(
-        boost::bind(
-            &RosWrapperMavlink::read_thread_func, this
-            )
-        );
-
-    rosrun_thread_ = boost::thread(
-        boost::bind(
-            &RosWrapperMavlink::rosrun_thread_func, this
-            )
-        );
-}
-
-int RosWrapperMavlink::arm_disarm(bool flag)
-{
-    mavlink_command_long_t com = {0};
-
-    com.target_system = sysid_;
-    com.target_component = compid_;
-    com.command = MAV_CMD_COMPONENT_ARM_DISARM;
-    com.confirmation = true;
-    com.param1 = flag ? 1 : 0;
-    com.param2 = 21196;
-
     mavlink_message_t message;
-    mavlink_msg_command_long_encode(sysid_, compid_, &message, &com);
-
-    int len = port_->write_message(message);
-
-    return len;
-}
-
-void RosWrapperMavlink::start()
-{
-    if(!port_->is_running())
-    {
-        printf("Error: Port is not opened\n");
-        exit(1);
-    }
-}
-
-
-void RosWrapperMavlink::read_thread_func()
-{
-
-    mavlink_message_t message;
+    float qx, qy, qz, qw;
 
     while(ros::ok())
     {
-        boost::lock_guard<boost::mutex> lock(mtx_);
+        // boost::lock_guard<boost::mutex> lock(mtx_);
         if(port_->read_message(message))
         {
             current_messages_.sysid = message.sysid;
@@ -137,7 +83,6 @@ void RosWrapperMavlink::read_thread_func()
                     imu_msg_.angular_velocity.z = 
                     current_messages_.highres_imu.zgyro;
 
-
                     // Write Magnetic Field message data
                     mag_msg_.header.stamp = ros::Time::now();
                     mag_msg_.header.frame_id = "imu_link";
@@ -161,17 +106,22 @@ void RosWrapperMavlink::read_thread_func()
                     mavlink_msg_attitude_quaternion_decode(&message, 
                     &current_messages_.attitude_quaternion);
 
+                    qw = current_messages_.attitude_quaternion.q1;
+                    qx = current_messages_.attitude_quaternion.q2;
+                    qy = current_messages_.attitude_quaternion.q3;
+                    qz = current_messages_.attitude_quaternion.q4;
+
                     imu_msg_.orientation.w = 
-                    current_messages_.attitude_quaternion.q1;
+                    qw;
 
                     imu_msg_.orientation.x = 
-                    current_messages_.attitude_quaternion.q2;
+                    qx;
 
                     imu_msg_.orientation.y =
-                    current_messages_.attitude_quaternion.q3;
+                    -qy;
 
                     imu_msg_.orientation.z =
-                    current_messages_.attitude_quaternion.q4;
+                    -qz;
 
                     attitude_quaternion_received_ = true;
 
@@ -189,17 +139,47 @@ void RosWrapperMavlink::read_thread_func()
             attitude_quaternion_received_ = false;
             imu_pub_.publish(imu_msg_);
             mag_pub_.publish(mag_msg_);
-            cv_.notify_all();
         }
     }   // End of while
+
 }
 
-void RosWrapperMavlink::rosrun_thread_func()
+RosWrapperMavlink::~RosWrapperMavlink()
 {
-    // while(ros::ok())
-    // {
-    //     imu_pub_.publish(imu_msg_);
-    //     mag_pub_.publish(mag_msg_);
-    //     loop_rate_.sleep();
-    // }
+    port_->stop();
+}
+
+void RosWrapperMavlink::publisher_setup()
+{
+    port_->start();
+    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("/imu",1);
+    mag_pub_ = nh_.advertise<sensor_msgs::MagneticField>("/mag",1);
+}
+
+int RosWrapperMavlink::arm_disarm(bool flag)
+{
+    mavlink_command_long_t com = {0};
+
+    com.target_system = sysid_;
+    com.target_component = compid_;
+    com.command = MAV_CMD_COMPONENT_ARM_DISARM;
+    com.confirmation = true;
+    com.param1 = flag ? 1 : 0;
+    com.param2 = 21196;
+
+    mavlink_message_t message;
+    mavlink_msg_command_long_encode(sysid_, compid_, &message, &com);
+
+    int len = port_->write_message(message);
+
+    return len;
+}
+
+void RosWrapperMavlink::start()
+{
+    if(!port_->is_running())
+    {
+        printf("Error: Port is not opened\n");
+        exit(1);
+    }
 }
