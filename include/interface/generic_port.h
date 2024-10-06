@@ -19,6 +19,8 @@ class GenericPort{
 
         virtual int read_message(mavlink_message_t &message) = 0;
 
+        virtual int write_message(const mavlink_message_t &message) = 0;
+
         virtual bool is_running() = 0;
 
         virtual void start() = 0;

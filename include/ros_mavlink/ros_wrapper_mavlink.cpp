@@ -7,6 +7,8 @@ GenericPort *port)
     current_messages_.sysid = sysid_;
     current_messages_.compid = compid_;
 
+    arm_disarm(true);
+
     publisher_and_thread_setup();
 
     start();
@@ -19,6 +21,8 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh, GenericPort *por
     current_messages_.compid = compid_;
 
     loop_rate_ = ros::Rate(ros_rate);
+
+    arm_disarm(true);
 
     publisher_and_thread_setup();
 
@@ -35,8 +39,8 @@ RosWrapperMavlink::~RosWrapperMavlink()
 void RosWrapperMavlink::publisher_and_thread_setup()
 {
     port_->start();
-    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("imu",1);
-    mag_pub_ = nh_.advertise<sensor_msgs::MagneticField>("mag",1);
+    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("/imu",1);
+    mag_pub_ = nh_.advertise<sensor_msgs::MagneticField>("/mag",1);
 
     read_thread_ = boost::thread(
         boost::bind(
@@ -51,6 +55,25 @@ void RosWrapperMavlink::publisher_and_thread_setup()
         );
 }
 
+int RosWrapperMavlink::arm_disarm(bool flag)
+{
+    mavlink_command_long_t com = {0};
+
+    com.target_system = sysid_;
+    com.target_component = compid_;
+    com.command = MAV_CMD_COMPONENT_ARM_DISARM;
+    com.confirmation = true;
+    com.param1 = flag ? 1 : 0;
+    com.param2 = 21196;
+
+    mavlink_message_t message;
+    mavlink_msg_command_long_encode(sysid_, compid_, &message, &com);
+
+    int len = port_->write_message(message);
+
+    return len;
+}
+
 void RosWrapperMavlink::start()
 {
     if(!port_->is_running())
@@ -60,9 +83,6 @@ void RosWrapperMavlink::start()
     }
 }
 
-void RosWrapperMavlink::stop()
-{
-}
 
 void RosWrapperMavlink::read_thread_func()
 {
@@ -167,6 +187,8 @@ void RosWrapperMavlink::read_thread_func()
             imu_msg_.header.stamp = ros::Time::now();
             highres_imu_received_ = false;
             attitude_quaternion_received_ = false;
+            imu_pub_.publish(imu_msg_);
+            mag_pub_.publish(mag_msg_);
             cv_.notify_all();
         }
     }   // End of while
@@ -174,10 +196,10 @@ void RosWrapperMavlink::read_thread_func()
 
 void RosWrapperMavlink::rosrun_thread_func()
 {
-    while(ros::ok())
-    {
-        imu_pub_.publish(imu_msg_);
-        mag_pub_.publish(mag_msg_);
-        loop_rate_.sleep();
-    }
+    // while(ros::ok())
+    // {
+    //     imu_pub_.publish(imu_msg_);
+    //     mag_pub_.publish(mag_msg_);
+    //     loop_rate_.sleep();
+    // }
 }

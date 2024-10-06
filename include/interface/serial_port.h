@@ -20,6 +20,8 @@ class SerialPort : public GenericPort
 
     int read_message(mavlink_message_t &message) override;
 
+    int write_message(const mavlink_message_t &message) override;
+
     bool is_running() override;
 
     void start() override;

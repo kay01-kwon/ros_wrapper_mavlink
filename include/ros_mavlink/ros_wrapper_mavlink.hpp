@@ -65,9 +65,9 @@ class RosWrapperMavlink
 
     void publisher_and_thread_setup();
 
-    void start();
+    int arm_disarm(bool flag);
 
-    void stop();
+    void start();
 
     void read_thread_func();
 

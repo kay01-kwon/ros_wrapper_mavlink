@@ -48,6 +48,19 @@ int SerialPort::read_message(mavlink_message_t &message)
     return msgReceived;
 }
 
+int SerialPort::write_message(const mavlink_message_t &message)
+{
+    char buf[300];
+
+    unsigned len = mavlink_msg_to_send_buffer((uint8_t*)buf, &message);
+    // int bytes_sent = 
+    int bytes_sent = static_cast<int>(write(fd_, buf, len));
+
+    tcdrain(fd_);
+
+    return bytes_sent;
+}
+
 bool SerialPort::is_running()
 {
     return is_open_;
