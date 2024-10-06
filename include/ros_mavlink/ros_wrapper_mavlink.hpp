@@ -6,11 +6,18 @@
 
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/thread/condition_variable.hpp>
 
 #include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/MagneticField.h>
 
 #include "interface/generic_port.h"
 #include "interface/mavlink_messages.h"
+
+
+using sensor_msgs::Imu;
+using sensor_msgs::MagneticField;
 
 class RosWrapperMavlink
 {
@@ -32,27 +39,39 @@ class RosWrapperMavlink
 
     MavlinkMessages current_messages_;
 
-    bool reading_status_;
+    bool reading_status_{false};
 
-    int sysid_, compid_;
+    int sysid_{0}, compid_{0};
 
     GenericPort *port_;
+
     ros::NodeHandle nh_;
-    ros::Publisher mavlink_pub_;
+
+    ros::Publisher imu_pub_;
+    ros::Publisher mag_pub_;
     ros::Rate loop_rate_{200};
+    
+    Imu imu_msg_;
+    MagneticField mag_msg_;
+
+    bool highres_imu_received_{false};
+    bool attitude_quaternion_received_{false};
 
     boost::thread read_thread_;
     boost::thread rosrun_thread_;
 
     boost::mutex mtx_;
+    boost::condition_variable cv_;
+
+    void publisher_and_thread_setup();
 
     void start();
 
     void stop();
 
-    void read_messages();
+    void read_thread_func();
 
-    void publish_messages();
+    void rosrun_thread_func();
     
 };
 
