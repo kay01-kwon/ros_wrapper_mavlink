@@ -74,14 +74,14 @@ void RosWrapperMavlink::ros_run()
                     imu_msg_.linear_acceleration.z = 
                     current_messages_.highres_imu.zacc;
 
-                    imu_msg_.angular_velocity.x = 
-                    current_messages_.highres_imu.xgyro;
+                    // imu_msg_.angular_velocity.x = 
+                    // current_messages_.highres_imu.xgyro;
 
-                    imu_msg_.angular_velocity.y = 
-                    current_messages_.highres_imu.ygyro;
+                    // imu_msg_.angular_velocity.y = 
+                    // current_messages_.highres_imu.ygyro;
 
-                    imu_msg_.angular_velocity.z = 
-                    current_messages_.highres_imu.zgyro;
+                    // imu_msg_.angular_velocity.z = 
+                    // current_messages_.highres_imu.zgyro;
 
                     // Write Magnetic Field message data
                     mag_msg_.header.stamp = ros::Time::now();
@@ -111,17 +111,19 @@ void RosWrapperMavlink::ros_run()
                     qy = current_messages_.attitude_quaternion.q3;
                     qz = current_messages_.attitude_quaternion.q4;
 
-                    imu_msg_.orientation.w = 
-                    qw;
+                    imu_msg_.orientation.w = qw;
 
-                    imu_msg_.orientation.x = 
-                    qx;
+                    imu_msg_.orientation.x = qx;
 
-                    imu_msg_.orientation.y =
-                    -qy;
+                    imu_msg_.orientation.y =-qy;
 
-                    imu_msg_.orientation.z =
-                    -qz;
+                    imu_msg_.orientation.z =-qz;
+
+                    imu_msg_.angular_velocity.x = current_messages_.attitude_quaternion.rollspeed;
+
+                    imu_msg_.angular_velocity.y = current_messages_.attitude_quaternion.pitchspeed;
+
+                    imu_msg_.angular_velocity.z = current_messages_.attitude_quaternion.yawspeed;
 
                     attitude_quaternion_received_ = true;
 
