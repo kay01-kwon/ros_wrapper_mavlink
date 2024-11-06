@@ -10,7 +10,11 @@ int main(int argc, char** argv)
 
     ros::NodeHandle nh;
 
-    SerialPort port("/dev/ttyACM0", 57600);
+    string port_name;
+
+    nh.getParam("port_name", port_name);
+
+    SerialPort port(port_name, 57600);
 
     RosWrapperMavlink wrapper(nh, &port);
 

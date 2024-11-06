@@ -8,7 +8,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
 
-#include "interface/generic_port.h"
+#include "interface/serial_port.h"
 #include "interface/mavlink_messages.h"
 
 
@@ -25,9 +25,9 @@ class RosWrapperMavlink
 
     RosWrapperMavlink &operator=(const RosWrapperMavlink &other) = delete;
 
-    RosWrapperMavlink(const ros::NodeHandle &nh,GenericPort *port);
+    RosWrapperMavlink(const ros::NodeHandle &nh,SerialPort *port);
 
-    RosWrapperMavlink(const ros::NodeHandle &nh, GenericPort *port, int ros_rate);
+    RosWrapperMavlink(const ros::NodeHandle &nh, SerialPort *port, int ros_rate);
 
     void ros_run();
 
@@ -41,7 +41,7 @@ class RosWrapperMavlink
 
     int sysid_{0}, compid_{0};
 
-    GenericPort *port_;
+    SerialPort *port_;
 
     ros::NodeHandle nh_;
 
@@ -59,8 +59,7 @@ class RosWrapperMavlink
 
     int arm_disarm(bool flag);
 
-    void start();
-
+    int toggle_offboard_control(bool flag);
     
 };
 

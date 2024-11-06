@@ -28,7 +28,8 @@
         "/home/kay/voxfield_ws/src/voxfield/voxblox/include/**",
         "/home/kay/voxfield_ws/src/voxfield/voxblox_ros/include/**",
         "/home/kay/voxfield_ws/src/voxfield/voxblox_rviz_plugin/include/**",
-        "/usr/include/**"
+        "/usr/include/**",
+        "/usr/local/include/**"
       ],
       "name": "ROS",
       "intelliSenseMode": "gcc-x64",

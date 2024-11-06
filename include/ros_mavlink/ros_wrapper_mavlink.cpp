@@ -1,20 +1,19 @@
 #include "ros_wrapper_mavlink.hpp"
 
-RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh, 
-GenericPort *port)
-:nh_(nh), port_(port)
+RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh,
+                                     SerialPort *port)
+: nh_(nh), port_(port)
 {
     current_messages_.sysid = sysid_;
     current_messages_.compid = compid_;
 
-    arm_disarm(true);
-
     publisher_setup();
 
-    start();
+    port_->start();
+
 }
 
-RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh, GenericPort *port, int ros_rate)
+RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh, SerialPort *port, int ros_rate)
 : nh_(nh), port_(port), reading_status_(false)
 {
     current_messages_.sysid = sysid_;
@@ -25,8 +24,6 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh, GenericPort *por
     arm_disarm(true);
 
     publisher_setup();
-
-    start();
 
 }
 
@@ -148,12 +145,12 @@ void RosWrapperMavlink::ros_run()
 
 RosWrapperMavlink::~RosWrapperMavlink()
 {
-    port_->stop();
+    arm_disarm(false);
+    port_->~SerialPort();
 }
 
 void RosWrapperMavlink::publisher_setup()
 {
-    port_->start();
     imu_pub_ = nh_.advertise<sensor_msgs::Imu>("/imu",1);
     mag_pub_ = nh_.advertise<sensor_msgs::MagneticField>("/mag",1);
 }
@@ -166,7 +163,7 @@ int RosWrapperMavlink::arm_disarm(bool flag)
     com.target_component = compid_;
     com.command = MAV_CMD_COMPONENT_ARM_DISARM;
     com.confirmation = true;
-    com.param1 = flag ? 1 : 0;
+    com.param1 = flag ? 1.0 : 0.1;
     com.param2 = 21196;
 
     mavlink_message_t message;
@@ -177,11 +174,19 @@ int RosWrapperMavlink::arm_disarm(bool flag)
     return len;
 }
 
-void RosWrapperMavlink::start()
+int RosWrapperMavlink::toggle_offboard_control(bool flag)
 {
-    if(!port_->is_running())
-    {
-        printf("Error: Port is not opened\n");
-        exit(1);
-    }
+    mavlink_command_long_t com = {0};
+    com.target_system = sysid_;
+    com.target_component = compid_;
+    com.command = MAV_CMD_NAV_GUIDED_ENABLE;
+    com.confirmation = true;
+    com.param1 = flag ? 1.0 : 0.1;
+
+    mavlink_message_t message;
+    mavlink_msg_command_long_encode(sysid_, compid_, &message, &com);
+
+    int len = port_->write_message(message);
+
+    return 0;
 }
