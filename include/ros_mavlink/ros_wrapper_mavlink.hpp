@@ -39,7 +39,7 @@ class RosWrapperMavlink
 
     bool reading_status_{false};
 
-    int sysid_{0}, compid_{0};
+    int sysid_{1}, compid_{1};
 
     SerialPort *port_;
 

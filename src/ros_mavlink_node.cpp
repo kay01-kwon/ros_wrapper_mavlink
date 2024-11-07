@@ -1,4 +1,3 @@
-#include "interface/generic_port.h"
 #include "interface/mavlink_messages.h"
 #include "interface/serial_port.h"
 

@@ -20,9 +20,9 @@ class SerialPort
 
     ~SerialPort();
 
-    int read_message(mavlink_message_t &message);
+    int read_message(mavlink_message_t *message);
 
-    int write_message(const mavlink_message_t &message);
+    int write_message(const mavlink_message_t *message);
 
     void start();
 

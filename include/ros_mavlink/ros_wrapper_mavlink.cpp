@@ -11,6 +11,59 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh,
 
     port_->start();
 
+    usleep(1000);
+
+    mavlink_message_t message;
+
+    current_messages_.sysid = message.sysid;
+    current_messages_.compid = message.compid;
+
+    printf("System id: %d\n", current_messages_.sysid);
+    printf("Component id: %d\n", current_messages_.compid);
+
+    mavlink_message_t message_to_write;
+
+    mavlink_command_long_t com = {0};
+
+    com.target_system = message.sysid;
+    com.target_component = message.compid;
+    com.confirmation = true;
+    com.command = MAV_CMD_REQUEST_MESSAGE;
+    com.param1 = MAVLINK_MSG_ID_HEARTBEAT;
+    com.param2 = 1000000;
+
+    mavlink_msg_command_long_encode(sysid_, compid_, 
+    &message_to_write, &com);
+    port->write_message(&message_to_write);
+
+    com.param1 = MAVLINK_MSG_ID_HIGHRES_IMU;
+
+    mavlink_msg_command_long_encode(sysid_, compid_, 
+    &message_to_write, &com);
+    port->write_message(&message_to_write);
+
+    com.param1 = MAVLINK_MSG_ID_ATTITUDE_QUATERNION;
+
+    mavlink_msg_command_long_encode(sysid_, compid_,
+    &message_to_write, &com);
+    port->write_message(&message_to_write);
+
+    com.command = MAV_CMD_SET_MESSAGE_INTERVAL;
+    com.param1 = MAVLINK_MSG_ID_HIGHRES_IMU;
+    com.param2 = 2500.0;
+
+    mavlink_msg_command_long_encode(sysid_, compid_, 
+    &message_to_write, &com);
+
+    port->write_message(&message_to_write);
+
+    com.param1 = MAVLINK_MSG_ID_ATTITUDE_QUATERNION;
+    mavlink_msg_command_long_encode(sysid_, compid_, 
+    &message_to_write, &com);
+
+    port->write_message(&message_to_write);
+
+
 }
 
 RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh, SerialPort *port, int ros_rate)
@@ -32,10 +85,13 @@ void RosWrapperMavlink::ros_run()
     mavlink_message_t message;
     float qx, qy, qz, qw;
 
+    std::cout << "ROS Wrapper Mavlink running..." << std::endl;
+
     while(ros::ok())
     {
         // boost::lock_guard<boost::mutex> lock(mtx_);
-        if(port_->read_message(message))
+        int result = port_->read_message(&message);
+        if(result)
         {
             current_messages_.sysid = message.sysid;
             current_messages_.compid = message.compid;
@@ -47,17 +103,20 @@ void RosWrapperMavlink::ros_run()
                     mavlink_msg_heartbeat_decode(&message, 
                     &current_messages_.heartbeat);
                     break;
+                    printf("Heartbeat received\n");
                 }
                 case MAVLINK_MSG_ID_SYS_STATUS:
                 {
                     mavlink_msg_sys_status_decode(&message, 
                     &current_messages_.sys_status);
                     break;
+                    printf("System status received\n");
                 }
                 case MAVLINK_MSG_ID_HIGHRES_IMU:
                 {
                     mavlink_msg_highres_imu_decode(&message, 
                     &current_messages_.highres_imu);
+                    printf("Highres IMU received\n");
 
                     // Write IMU message data
                     imu_msg_.header.frame_id = "imu_link";
@@ -103,6 +162,8 @@ void RosWrapperMavlink::ros_run()
                     mavlink_msg_attitude_quaternion_decode(&message, 
                     &current_messages_.attitude_quaternion);
 
+                    printf("Attitude quaternion received\n");
+
                     qw = current_messages_.attitude_quaternion.q1;
                     qx = current_messages_.attitude_quaternion.q2;
                     qy = current_messages_.attitude_quaternion.q3;
@@ -146,7 +207,6 @@ void RosWrapperMavlink::ros_run()
 RosWrapperMavlink::~RosWrapperMavlink()
 {
     arm_disarm(false);
-    port_->~SerialPort();
 }
 
 void RosWrapperMavlink::publisher_setup()
@@ -162,14 +222,19 @@ int RosWrapperMavlink::arm_disarm(bool flag)
     com.target_system = sysid_;
     com.target_component = compid_;
     com.command = MAV_CMD_COMPONENT_ARM_DISARM;
-    com.confirmation = true;
+    com.confirmation = 0;
     com.param1 = flag ? 1.0 : 0.1;
-    com.param2 = 21196;
+    com.param2 = 0.0;
+    com.param3 = 0.0;
+    com.param4 = 0.0;
+    com.param5 = 0.0;
+    com.param6 = 0.0;
+    com.param7 = 0.0;
 
     mavlink_message_t message;
     mavlink_msg_command_long_encode(sysid_, compid_, &message, &com);
 
-    int len = port_->write_message(message);
+    int len = port_->write_message(&message);
 
     return len;
 }
@@ -186,7 +251,7 @@ int RosWrapperMavlink::toggle_offboard_control(bool flag)
     mavlink_message_t message;
     mavlink_msg_command_long_encode(sysid_, compid_, &message, &com);
 
-    int len = port_->write_message(message);
+    int len = port_->write_message(&message);
 
-    return 0;
+    return len;
 }

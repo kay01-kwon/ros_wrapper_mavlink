@@ -9,9 +9,10 @@ SerialPort::SerialPort(const string &port_name, int baudrate)
 SerialPort::~SerialPort()
 {
     serial_.close();
+    std::cout << "Serial port closed" << std::endl;
 }
 
-int SerialPort::read_message(mavlink_message_t &message)
+int SerialPort::read_message(mavlink_message_t *message)
 {
     uint8_t cp;
     mavlink_status_t status;
@@ -19,46 +20,31 @@ int SerialPort::read_message(mavlink_message_t &message)
 
     // int result = 0;
 
-    if(serial_.available())
+    if(serial_.available()>0)
     {
         serial_.read(&cp, 1);
-
         msgReceived = mavlink_parse_char(MAVLINK_COMM_0, 
                                          cp, 
-                                         &message, 
+                                         message, 
                                          &status);
     }
-
-    // if(result > 0)
-    // {
-
-        
-    //     if( last_status_.packet_rx_drop_count != status.packet_rx_drop_count )
-    //     {
-    //         std::cout << "ERROR: DROPPED PACKETS" 
-    //         << std::endl;
-    //     }
-    //     last_status_ = status;
-    // }
-    // else
-    // {
-    //     std::cout << 
-    //     "ERROR: Could not read from serial port" 
-    //     << std::endl;
-    // }
 
     return msgReceived;
 }
 
-int SerialPort::write_message(const mavlink_message_t &message)
+int SerialPort::write_message(const mavlink_message_t *message)
 {
-    char buf[MAVLINK_MAX_PACKET_LEN];
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 
-    unsigned int len = 
-    mavlink_msg_to_send_buffer((uint8_t*)buf,
-                                &message);
+    uint16_t len = 
+    mavlink_msg_to_send_buffer(buf,
+                               message);
 
-    size_t bytes_sent = serial_.write((uint8_t*)buf, len);                    
+    size_t bytes_sent;
+
+    bytes_sent = serial_.write(buf, len);
+
+
     return bytes_sent;
 }
 
