@@ -15,6 +15,15 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh,
 
     mavlink_message_t message;
 
+    message.msgid = 100;
+
+    port_->read_message(&message);
+
+    while(message.msgid != MAVLINK_MSG_ID_HEARTBEAT)
+    {
+        port_->read_message(&message);
+    }
+
     current_messages_.sysid = message.sysid;
     current_messages_.compid = message.compid;
 
@@ -27,42 +36,23 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh,
 
     com.target_system = message.sysid;
     com.target_component = message.compid;
-    com.confirmation = true;
-    com.command = MAV_CMD_REQUEST_MESSAGE;
-    com.param1 = MAVLINK_MSG_ID_HEARTBEAT;
-    com.param2 = 1000000;
-
-    mavlink_msg_command_long_encode(sysid_, compid_, 
-    &message_to_write, &com);
-    port->write_message(&message_to_write);
-
-    com.param1 = MAVLINK_MSG_ID_HIGHRES_IMU;
-
-    mavlink_msg_command_long_encode(sysid_, compid_, 
-    &message_to_write, &com);
-    port->write_message(&message_to_write);
-
+    com.confirmation = 0;
+    
+    com.command = MAV_CMD_SET_MESSAGE_INTERVAL;
     com.param1 = MAVLINK_MSG_ID_ATTITUDE_QUATERNION;
+    com.param2 = 10000.0;
 
     mavlink_msg_command_long_encode(sysid_, compid_,
     &message_to_write, &com);
     port->write_message(&message_to_write);
 
-    com.command = MAV_CMD_SET_MESSAGE_INTERVAL;
     com.param1 = MAVLINK_MSG_ID_HIGHRES_IMU;
-    com.param2 = 2500.0;
+    com.param2 = 10000.0;
 
     mavlink_msg_command_long_encode(sysid_, compid_, 
     &message_to_write, &com);
 
     port->write_message(&message_to_write);
-
-    com.param1 = MAVLINK_MSG_ID_ATTITUDE_QUATERNION;
-    mavlink_msg_command_long_encode(sysid_, compid_, 
-    &message_to_write, &com);
-
-    port->write_message(&message_to_write);
-
 
 }
 
@@ -98,25 +88,11 @@ void RosWrapperMavlink::ros_run()
 
             switch(message.msgid)
             {
-                case MAVLINK_MSG_ID_HEARTBEAT:
-                {
-                    mavlink_msg_heartbeat_decode(&message, 
-                    &current_messages_.heartbeat);
-                    break;
-                    printf("Heartbeat received\n");
-                }
-                case MAVLINK_MSG_ID_SYS_STATUS:
-                {
-                    mavlink_msg_sys_status_decode(&message, 
-                    &current_messages_.sys_status);
-                    break;
-                    printf("System status received\n");
-                }
                 case MAVLINK_MSG_ID_HIGHRES_IMU:
                 {
                     mavlink_msg_highres_imu_decode(&message, 
                     &current_messages_.highres_imu);
-                    printf("Highres IMU received\n");
+                    // printf("Highres IMU received\n");
 
                     // Write IMU message data
                     imu_msg_.header.frame_id = "imu_link";
@@ -162,7 +138,7 @@ void RosWrapperMavlink::ros_run()
                     mavlink_msg_attitude_quaternion_decode(&message, 
                     &current_messages_.attitude_quaternion);
 
-                    printf("Attitude quaternion received\n");
+                    // printf("Attitude quaternion received\n");
 
                     qw = current_messages_.attitude_quaternion.q1;
                     qx = current_messages_.attitude_quaternion.q2;
@@ -211,8 +187,8 @@ RosWrapperMavlink::~RosWrapperMavlink()
 
 void RosWrapperMavlink::publisher_setup()
 {
-    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("/imu",1);
-    mag_pub_ = nh_.advertise<sensor_msgs::MagneticField>("/mag",1);
+    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("/imu/data",1);
+    mag_pub_ = nh_.advertise<sensor_msgs::MagneticField>("/mag/data",1);
 }
 
 int RosWrapperMavlink::arm_disarm(bool flag)

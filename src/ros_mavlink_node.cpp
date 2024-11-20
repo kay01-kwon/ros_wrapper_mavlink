@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 
     nh.getParam("port_name", port_name);
 
-    SerialPort port(port_name, 57600);
+    SerialPort port(port_name, 921600);
 
     RosWrapperMavlink wrapper(nh, &port);
 
