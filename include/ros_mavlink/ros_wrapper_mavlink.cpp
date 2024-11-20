@@ -15,14 +15,7 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh,
 
     mavlink_message_t message;
 
-    message.msgid = 100;
-
-    port_->read_message(&message);
-
-    while(message.msgid != MAVLINK_MSG_ID_HEARTBEAT)
-    {
-        port_->read_message(&message);
-    }
+    read_heart_beat(&message);
 
     current_messages_.sysid = message.sysid;
     current_messages_.compid = message.compid;
@@ -30,29 +23,12 @@ RosWrapperMavlink::RosWrapperMavlink(const ros::NodeHandle &nh,
     printf("System id: %d\n", current_messages_.sysid);
     printf("Component id: %d\n", current_messages_.compid);
 
-    mavlink_message_t message_to_write;
+    set_message_interval(message.sysid, message.compid,
+    MAVLINK_MSG_ID_ATTITUDE_QUATERNION, 10000.0);
 
-    mavlink_command_long_t com = {0};
+    set_message_interval(message.sysid, message.compid,
+    MAVLINK_MSG_ID_HIGHRES_IMU, 10000.0);
 
-    com.target_system = message.sysid;
-    com.target_component = message.compid;
-    com.confirmation = 0;
-    
-    com.command = MAV_CMD_SET_MESSAGE_INTERVAL;
-    com.param1 = MAVLINK_MSG_ID_ATTITUDE_QUATERNION;
-    com.param2 = 10000.0;
-
-    mavlink_msg_command_long_encode(sysid_, compid_,
-    &message_to_write, &com);
-    port->write_message(&message_to_write);
-
-    com.param1 = MAVLINK_MSG_ID_HIGHRES_IMU;
-    com.param2 = 10000.0;
-
-    mavlink_msg_command_long_encode(sysid_, compid_, 
-    &message_to_write, &com);
-
-    port->write_message(&message_to_write);
 
 }
 
@@ -106,15 +82,6 @@ void RosWrapperMavlink::ros_run()
                     imu_msg_.linear_acceleration.z = 
                     current_messages_.highres_imu.zacc;
 
-                    // imu_msg_.angular_velocity.x = 
-                    // current_messages_.highres_imu.xgyro;
-
-                    // imu_msg_.angular_velocity.y = 
-                    // current_messages_.highres_imu.ygyro;
-
-                    // imu_msg_.angular_velocity.z = 
-                    // current_messages_.highres_imu.zgyro;
-
                     // Write Magnetic Field message data
                     mag_msg_.header.stamp = ros::Time::now();
                     mag_msg_.header.frame_id = "imu_link";
@@ -155,9 +122,9 @@ void RosWrapperMavlink::ros_run()
 
                     imu_msg_.angular_velocity.x = current_messages_.attitude_quaternion.rollspeed;
 
-                    imu_msg_.angular_velocity.y = current_messages_.attitude_quaternion.pitchspeed;
+                    imu_msg_.angular_velocity.y = -(current_messages_.attitude_quaternion.pitchspeed);
 
-                    imu_msg_.angular_velocity.z = current_messages_.attitude_quaternion.yawspeed;
+                    imu_msg_.angular_velocity.z = -(current_messages_.attitude_quaternion.yawspeed);
 
                     attitude_quaternion_received_ = true;
 
@@ -230,4 +197,34 @@ int RosWrapperMavlink::toggle_offboard_control(bool flag)
     int len = port_->write_message(&message);
 
     return len;
+}
+
+void RosWrapperMavlink::read_heart_beat(mavlink_message_t *message)
+{
+    message->msgid = 100;
+    port_->read_message(message);
+
+    while(message->msgid != MAVLINK_MSG_ID_HEARTBEAT)
+    {
+        port_->read_message(message);
+    }
+}
+
+void RosWrapperMavlink::set_message_interval(const int sysid, const int compid,
+    const int message_id, const float dt)
+{
+    mavlink_command_long_t com = {0};
+    mavlink_message_t message_to_write;
+
+    com.target_system = sysid;
+    com.target_component = compid;
+    com.confirmation = 0;
+    
+    com.command = MAV_CMD_SET_MESSAGE_INTERVAL;
+    com.param1 = message_id;
+    com.param2 = dt;
+
+    mavlink_msg_command_long_encode(sysid_, compid_,
+    &message_to_write, &com);
+    port_->write_message(&message_to_write);
 }

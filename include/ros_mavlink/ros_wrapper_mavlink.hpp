@@ -60,6 +60,11 @@ class RosWrapperMavlink
     int arm_disarm(bool flag);
 
     int toggle_offboard_control(bool flag);
+
+    void read_heart_beat(mavlink_message_t *message);
+
+    void set_message_interval(const int sysid, const int compid,
+    const int message_id, const float dt);
     
 };
 
